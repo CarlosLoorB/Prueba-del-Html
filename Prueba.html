@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Análisis Twitter - Café de Tere</title>
+    <style>
+        /* Estilos Generales */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .dashboard-header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #0056b3;
+            margin-bottom: 30px;
+            color: #0056b3;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        h2 {
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 0;
+            color: #007bff;
+        }
+
+        /* Estilos de la Matriz de Correlación */
+        .corr-matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+        }
+        .corr-matrix-table th, .corr-matrix-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            position: relative;
+        }
+        .corr-matrix-table th {
+            background-color: #e9ecef;
+            color: #495057;
+            font-weight: bold;
+        }
+        /* Colores de Correlación (simulación) */
+        .corr-pos-high { background-color: #a7f3d0; } /* Verde claro */
+        .corr-pos-mid { background-color: #d1fae5; }
+        .corr-neg-low { background-color: #fce7f6; } /* Rojo/Rosa claro */
+        .corr-diag { background-color: #007bff; color: white; }
+
+        /* Estilos del Heatmap */
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: auto repeat(24, 1fr);
+            gap: 1px;
+            font-size: 10px;
+            overflow-x: auto;
+        }
+        .heatmap-grid div {
+            padding: 5px 0;
+            text-align: center;
+            background-color: #f8f9fa;
+            position: relative;
+            cursor: default;
+            transition: background-color 0.3s;
+        }
+        .heatmap-grid .header-cell {
+            background-color: #dee2e6;
+            font-weight: bold;
+            padding: 5px 2px;
+            white-space: nowrap;
+        }
+        .day-label {
+            grid-column: 1 / 2;
+            background-color: #adb5bd !important;
+            color: white;
+            font-weight: bold;
+        }
+        /* Simulación de color para Engagement */
+        .eng-high { background-color: #ffadad !important; } /* Rojo Alto */
+        .eng-mid { background-color: #ffd6a5 !important; } /* Naranja Medio */
+        .eng-low { background-color: #a0c4ff !important; } /* Azul Bajo */
+        .eng-zero { background-color: #cffafe !important; } /* Cyan Cero */
+        .eng-neg { background-color: #f0f0f0 !important; } /* Gris Sin Datos */
+
+        /* Estilos para el Detallado (Hover/Tooltip Simulation) */
+        .tooltip {
+            position: absolute;
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            bottom: 100%; /* Posiciona arriba del elemento */
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+        }
+        .heatmap-grid div:hover .tooltip,
+        .corr-matrix-table td:hover .tooltip {
+            opacity: 1;
+        }
+
+        /* Estilos de Prioridades */
+        .priorities-list {
+            list-style: none;
+            padding: 0;
+        }
+        .priorities-list li {
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            border-left: 5px solid;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .priorities-list li:nth-child(1) { border-color: #dc3545; background-color: #fef4f4; }
+        .priorities-list li:nth-child(2) { border-color: #ffc107; background-color: #fffbe6; }
+        .priorities-list li:nth-child(3) { border-color: #28a745; background-color: #f1fff3; }
+        .priorities-list li span {
+            font-weight: bold;
+        }
+
+        /* Estilos para Top Tweets */
+        .top-tweets-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .top-tweets-table th, .top-tweets-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .top-tweets-table th {
+            background-color: #e9ecef;
+        }
+        .tweet-text {
+            max-height: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-header">
+    <h1>Dashboard de Análisis de Conversación - Café de Tere</h1>
+    <p>Análisis de un hilo de comentarios de Twitter sobre el negocio.</p>
+</div>
+
+<div class="container">
+
+    <div class="card">
+        <h2>Prioridades Tácticas Clave (Conclusión del Análisis)</h2>
+        <ul class="priorities-list">
+            <li><span>Prioridad 1:</span> Habilitar pagos con tarjeta/QR y otros medios digitales para reducir la fricción de solo usar efectivo.</li>
+            <li><span>Prioridad 2:</span> Recalibrar y estandarizar recetas (especialmente tigrillo/bolón) con control estricto de temperatura y salado.</li>
+            <li><span>Prioridad 3:</span> Ajustar la propuesta de valor: revisar porciones, crear combos y optimizar políticas de delivery/ajustar la política de ají.</li>
+            <li><span>Prioridad 4:</span> Fortalecer el discurso de inclusión y emprendimiento con respuestas empáticas para manejar la polarización social.</li>
+            <li><span>Prioridad 5:</span> Capitalizar la viralidad con activaciones y ofertas específicas por canal (digitales).</li>
+        </ul>
+        <p style="font-size: 0.9em; margin-top: 15px;">*Estas prioridades buscan elevar la satisfacción, reducir la conversación negativa y sostener el crecimiento.</p>
+    </div>
+
+    <div class="card">
+        <h2>Matriz de Correlación de Métricas de Engagement</h2>
+        <p>Muestra cómo se relacionan linealmente las diferentes métricas.</p>
+        <table class="corr-matrix-table">
+            <thead>
+                <tr>
+                    <th>Métrica</th>
+                    <th>User Followers Count</th>
+                    <th>User Friends Count</th>
+                    <th>ID</th>
+                    <th>Favorite Count</th>
+                    <th>Retweet Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th>User Followers Count</th>
+                    <td class="corr-diag">1.00</td>
+                    <td class="corr-pos-mid">0.58 <div class="tooltip">Correlación positiva media: Cuentas con más seguidores tienden a tener más amigos.</div></td>
+                    <td class="corr-neg-low">-0.14</td>
+                    <td class="corr-pos-high">0.37 <div class="tooltip">Correlación positiva: Los usuarios con más seguidores tienden a recibir más favoritos.</div></td>
+                    <td class="corr-neg-low">0.13</td>
+                </tr>
+                <tr>
+                    <th>User Friends Count</th>
+                    <td class="corr-pos-mid">0.58</td>
+                    <td class="corr-diag">1.00</td>
+                    <td class="corr-neg-low">-0.09</td>
+                    <td class="corr-neg-low">0.16</td>
+                    <td class="corr-neg-low">0.05</td>
+                </tr>
+                <tr>
+                    <th>ID (Antigüedad)</th>
+                    <td class="corr-neg-low">-0.14</td>
+                    <td class="corr-neg-low">-0.09</td>
+                    <td class="corr-diag">1.00</td>
+                    <td class="corr-neg-low">-0.13</td>
+                    <td class="corr-neg-low">0.08</td>
+                </tr>
+                <tr>
+                    <th>Favorite Count</th>
+                    <td class="corr-pos-high">0.37</td>
+                    <td class="corr-neg-low">0.16</td>
+                    <td class="corr-neg-low">-0.13</td>
+                    <td class="corr-diag">1.00</td>
+                    <td class="corr-neg-low">0.12</td>
+                </tr>
+                <tr>
+                    <th>Retweet Count</th>
+                    <td class="corr-neg-low">0.13</td>
+                    <td class="corr-neg-low">0.05</td>
+                    <td class="corr-neg-low">0.08</td>
+                    <td class="corr-neg-low">0.12</td>
+                    <td class="corr-diag">1.00</td>
+                </tr>
+            </tbody>
+        </table>
+        <p style="font-size: 0.9em; margin-top: 15px;">*Las correlaciones más fuertes (cercanas a 1) se observan entre <b>Followers</b> y <b>Friends</b> (0.58), y entre <b>Followers</b> y <b>Favorite Count</b> (0.37).</p>
+    </div>
+
+    <div class="card">
+        <h2>Heatmap de Engagement (Día vs. Hora)</h2>
+        <p>Muestra el volumen de engagement agregado por hora del día y día de la semana.</p>
+        <div class="heatmap-grid">
+            <div class="header-cell" style="background-color: transparent;"></div>
+            <script>
+                // JavaScript para generar las 24 horas (simulación)
+                for (let i = 0; i < 24; i++) {
+                    document.write(`<div class="header-cell">${i}:00</div>`);
+                }
+            </script>
+            <script>
+                const heatmapData = {
+                    "Monday": {"0.0": -1.0, "1.0": 0.0, "2.0": -1.0, "3.0": 0.0, "4.0": -1.0, "5.0": -1.0, "6.0": -1.0, "7.0": 0.0, "8.0": -1.0, "9.0": 0.0, "10.0": -1.0, "11.0": 0.0, "12.0": -1.0, "13.0": -1.0, "14.0": 1.0, "15.0": 1.0, "16.0": 3.0, "17.0": 177.0, "18.0": -1.0, "19.0": -1.0, "20.0": -1.0, "21.0": -1.0, "22.0": 2734.0, "23.0": 82.0},
+                    "Tuesday": {"0.0": 1.0, "1.0": 32.0, "2.0": 20.0, "3.0": 0.0, "4.0": 3.0, "5.0": -1.0, "6.0": -1.0, "7.0": 1.0, "8.0": -1.0, "9.0": 0.0, "10.0": -1.0, "11.0": 1.0, "12.0": 3.0, "13.0": 73.0, "14.0": 195.0, "15.0": 18.0, "16.0": 175.0, "17.0": 102.0, "18.0": 1012.0, "19.0": 651.0, "20.0": 210.0, "21.0": 412.0, "22.0": 1555.0, "23.0": 1331.0},
+                    "Wednesday": {"0.0": 209.0, "1.0": 906.0, "2.0": 1789.0, "3.0": 895.0, "4.0": 265.0, "5.0": 37.0, "6.0": 27.0, "7.0": 31.0, "8.0": 37.0, "9.0": 4.0, "10.0": 12.0, "11.0": 64.0, "12.0": 46.0, "13.0": 115.0, "14.0": 98.0, "15.0": 76.0, "16.0": 36.0, "17.0": 160.0, "18.0": 24.0, "19.0": 34.0, "20.0": 22.0, "21.0": 282.0, "22.0": 65.0, "23.0": 83.0},
+                    "Thursday": {"0.0": 37.0, "1.0": 104.0, "2.0": 40.0, "3.0": 10.0, "4.0": 15.0, "5.0": 8.0, "6.0": 0.0, "7.0": 0.0, "8.0": -1.0, "9.0": 0.0, "10.0": 0.0, "11.0": 1.0, "12.0": 17.0, "13.0": 5.0, "14.0": 1.0, "15.0": 3.0, "16.0": 57.0, "17.0": 29.0, "18.0": 10.0, "19.0": 1.0, "20.0": 16.0, "21.0": 1.0, "22.0": 1.0, "23.0": 100.0},
+                    "Friday": {"0.0": 5.0, "1.0": 0.0, "2.0": -1.0, "3.0": -1.0, "4.0": -1.0, "5.0": -1.0, "6.0": -1.0, "7.0": -1.0, "8.0": -1.0, "9.0": -1.0, "10.0": -1.0, "11.0": -1.0, "12.0": -1.0, "13.0": -1.0, "14.0": 8.0, "15.0": -1.0, "16.0": -1.0, "17.0": -1.0, "18.0": -1.0, "19.0": -1.0, "20.0": -1.0, "21.0": -1.0, "22.0": -1.0, "23.0": -1.0},
+                    "Saturday": {"0.0": 5.0, "1.0": -1.0, "2.0": -1.0, "3.0": -1.0, "4.0": -1.0, "5.0": -1.0, "6.0": -1.0, "7.0": -1.0, "8.0": -1.0, "9.0": -1.0, "10.0": 11.0, "11.0": -1.0, "12.0": -1.0, "13.0": 0.0, "14.0": 0.0, "15.0": 5.0, "16.0": 2.0, "17.0": 8.0, "18.0": -1.0, "19.0": -1.0, "20.0": -1.0, "21.0": 0.0, "22.0": -1.0, "23.0": -1.0},
+                    "Sunday": {"0.0": -1.0, "1.0": 0.0, "2.0": -1.0, "3.0": -1.0, "4.0": -1.0, "5.0": -1.0, "6.0": -1.0, "7.0": -1.0, "8.0": -1.0, "9.0": -1.0, "10.0": -1.0, "11.0": -1.0, "12.0": -1.0, "13.0": 7.0, "14.0": -1.0, "15.0": 0.0, "16.0": 0.0, "17.0": -1.0, "18.0": 1.0, "19.0": -1.0, "20.0": -1.0, "21.0": -1.0, "22.0": 0.0, "23.0": -1.0}
+                };
+
+                // Función para asignar clase de color (simulación)
+                function getColorClass(value) {
+                    if (value === -1.0) return 'eng-neg';
+                    if (value === 0.0) return 'eng-zero';
+                    if (value >= 1000) return 'eng-high';
+                    if (value >= 100) return 'eng-mid';
+                    return 'eng-low';
+                }
+
+                const daysOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+                daysOrder.forEach(day => {
+                    document.write(`<div class="day-label">${day}</div>`);
+                    for (let i = 0; i < 24; i++) {
+                        const hour = i.toFixed(1);
+                        const value = heatmapData[day][hour];
+                        const colorClass = getColorClass(value);
+                        const displayValue = value === -1.0 ? 'N/A' : (value > 1000 ? (value / 1000).toFixed(1) + 'K' : value);
+                        document.write(`<div class="${colorClass}">
+                            ${displayValue}
+                            <div class="tooltip">Día: ${day}, Hora: ${i}:00, Engagement: ${value === -1.0 ? 'Sin Datos' : value}</div>
+                        </div>`);
+                    }
+                });
+            </script>
+        </div>
+        <p style="font-size: 0.9em; margin-top: 15px;">*Los picos de engagement (valores altos en rojo) se observan en la noche de Lunes (22:00) y las madrugadas/noches de Martes y Miércoles.</p>
+    </div>
+
+    <div class="card">
+        <h2>Top 10 Tweets por Engagement Total</h2>
+        <p>Muestra los tweets con mayor métrica de engagement combinada.</p>
+        <table class="top-tweets-table">
+            <thead>
+                <tr>
+                    <th>Engagement Total</th>
+                    <th>Favoritos</th>
+                    <th>Retweets</th>
+                    <th>Texto del Tweet (Extracto)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>250.0</td>
+                    <td>10.0</td>
+                    <td>1.0</td>
+                    <td><div class="tweet-text">@Cesar_Antonio_F @LivePalestina @Jou_Kaiser @tere_marinovic @elvillegaschile @sergioulloa1 @German69738375… https://t.co/0mgrQNJVrU</div></td>
+                </tr>
+                <tr>
+                    <td>86.8</td>
+                    <td>79.0</td>
+                    <td>1.0</td>
+                    <td><div class="tweet-text">@dearc26 @eluniversocom Q insoportable estas personas resentidas. Viven amargados! Hay gustos y gustos. El bolón de Tere es rico!</div></td>
+                </tr>
+                <tr>
+                    <td>66.7</td>
+                    <td>10.0</td>
+                    <td>3.0</td>
+                    <td><div class="tweet-text">Se acabó el chisme con el #closetdedav y ahora leo twists del #cafedetere... qué tiro guayaquileños todo bien en casa?</div></td>
+                </tr>
+                <tr>
+                    <td>63.9</td>
+                    <td>46.0</td>
+                    <td>3.0</td>
+                    <td><div class="tweet-text">@KaritoSoBsc Oe oe oe bien recuerdo que una vez twitteaste qué más barato Te salía comprar un departamento en salin… https://t.co/FL0MGZv9Hx</div></td>
+                </tr>
+                <tr>
+                    <td>61.1</td>
+                    <td>332.0</td>
+                    <td>81.0</td>
+                    <td><div class="tweet-text">La señora del café d Tere es la prueba de q trabajando duro se puede llegar a rico. Ella ha demostrado q no es nece… https://t.co/JMNbFy5KLS</div></td>
+                </tr>
+                <tr>
+                    <td>33.3</td>
+                    <td>1.0</td>
+                    <td>0.0</td>
+                    <td><div class="tweet-text">Cuando trabajaba en el parque Colón una vez quise ir al #cafedetere que hay ahí vi los precios y me parecieron dema… https://t.co/LP8o8NIHU6</div></td>
+                </tr>
+                <tr>
+                    <td>33.3</td>
+                    <td>1.0</td>
+                    <td>0.0</td>
+                    <td><div class="tweet-text">@ornella_soriano @_SantinoBoy @CafedeTere Que comentario tan regionalista... cabeza hueca que piensa que en la sier… https://t.co/cWBukqR7EM</div></td>
+                </tr>
+                <tr>
+                    <td>19.4</td>
+                    <td>7.0</td>
+                    <td>3.0</td>
+                    <td><div class="tweet-text">@tere_marinovic En esta crisis, no hay buenos ni malos, se enfrentan entre chilenos, padres y familias. Y todo este… https://t.co/CQsnaeEs8Z</div></td>
+                </tr>
+                <tr>
+                    <td>15.6</td>
+                    <td>187.0</td>
+                    <td>63.0</td>
+                    <td><div class="tweet-text">Si el cafe de tere te parece que es caro, turro y puro mkt anda busca otro bolon chtm El ecuatoriano próspero tiene… https://t.co/APCz649NbZ</div></td>
+                </tr>
+                <tr>
+                    <td>13.3</td>
+                    <td>130.0</td>
+                    <td>35.0</td>
+                    <td><div class="tweet-text">Soy cliente regular del Café de Tere. Ahora bien, que siga sin aceptar tarjetas de crédito es indefendible. Doña Te… https://t.co/jHdbRXcdfa</div></td>
+                </tr>
+            </tbody>
+        </table>
+        <p style="font-size: 0.9em; margin-top: 15px;">*El tweet con mayor engagement total (250.0) es una respuesta a un hilo de figuras políticas/sociales.</p>
+    </div>
+
+</div>
+
+</body>
+</html>
